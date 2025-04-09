@@ -9,6 +9,6 @@ public class KeypadTrigger : MonoBehaviour
 
     private void OnMouseDown()
     {
-        SceneManager.LoadScene(passwordSceneName); // Þifre sahnesine geç
+        SceneManager.LoadScene(passwordSceneName); // Sifre sahnesine geÃ§
     }
 }
