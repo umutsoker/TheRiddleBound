@@ -9,185 +9,170 @@ namespace NavKeypad
 {
     public class Keypad : MonoBehaviour
     {
-        [Header("Events")]
-        [SerializeField] private UnityEvent onAccessGranted;
-        [SerializeField] private UnityEvent onAccessDenied;
-        [Header("Combination Code (9 Numbers Max)")]
-        [SerializeField] private int keypadCombo = 12345;
+        // -------------------- AYARLAR VE OLAYLAR --------------------
+        [Header("Olaylar")]
+        [SerializeField] private UnityEvent onAccessGranted; // Şifre doğruysa tetiklenecek olay
+        [SerializeField] private UnityEvent onAccessDenied;   // Şifre yanlışsa tetiklenecek olay
+        
+        [Header("Kombinasyon Ayarları (Max 9 Haneli)")]
+        [SerializeField] private int keypadCombo = 12345;     // Kapıyı açacak şifre
 
-        //
-        [Header("Attempt Settings")]
-        [SerializeField] private int maxAttempts = 3; // Maksimum deneme hakk�
-        [SerializeField] private TMP_Text attemptsText; // Kalan haklar� g�sterecek UI Text
-        private int remainingAttempts;
-        //
+        // -------------------- DENEME HAKKI AYARLARI --------------------
+        [Header("Deneme Ayarları")]
+        [SerializeField] private int maxAttempts = 3;        // Maksimum yanlış girme hakkı
+        [SerializeField] private TMP_Text attemptsText;      // Kalan hakları gösteren text
+        private int remainingAttempts;                       // Geriye kalan deneme hakkı
 
-        public UnityEvent OnAccessGranted => onAccessGranted;
-        public UnityEvent OnAccessDenied => onAccessDenied;
-
-        [Header("Settings")]
-        [SerializeField] private string accessGrantedText = "Granted";
-        [SerializeField] private string accessDeniedText = "Denied";
-
-        [Header("Visuals")]
-        [SerializeField] private float displayResultTime = 1f;
+        // -------------------- DİĞER AYARLAR --------------------
+        [Header("Görsel Ayarlar")]
+        [SerializeField] private float displayResultTime = 1f; // Mesajların ekranda kalma süresi
         [Range(0, 5)]
-        [SerializeField] private float screenIntensity = 2.5f;
-        [Header("Colors")]
-        [SerializeField] private Color screenNormalColor = new Color(0.98f, 0.50f, 0.032f, 1f); //orangy
-        [SerializeField] private Color screenDeniedColor = new Color(1f, 0f, 0f, 1f); //red
-        [SerializeField] private Color screenGrantedColor = new Color(0f, 0.62f, 0.07f); //greenish
-        [Header("SoundFx")]
-        [SerializeField] private AudioClip buttonClickedSfx;
-        [SerializeField] private AudioClip accessDeniedSfx;
-        [SerializeField] private AudioClip accessGrantedSfx;
-        [Header("Component References")]
-        [SerializeField] private Renderer panelMesh;
-        [SerializeField] private TMP_Text keypadDisplayText;
-        [SerializeField] private AudioSource audioSource;
+        [SerializeField] private float screenIntensity = 2.5f;  // Ekran parlaklık ayarı
 
-        [Header("Game Over Settings")]
-        [SerializeField] private TMP_Text gameOverText;
-        [SerializeField] private float gameOverDelay = 2f; // 2 saniye sonra sahne de�i�sin
-        [SerializeField] private string gameOverSceneName = "GameOverScene";
+        [Header("Renkler")]
+        [SerializeField] private Color screenNormalColor = new Color(0.98f, 0.50f, 0.032f, 1f);  // Normal renk (turuncu)
+        [SerializeField] private Color screenDeniedColor = new Color(1f, 0f, 0f, 1f);           // Reddedilince kırmızı
+        [SerializeField] private Color screenGrantedColor = new Color(0f, 0.62f, 0.07f);        // Onaylanınca yeşil
 
+        [Header("Ses Efektleri")]
+        [SerializeField] private AudioClip buttonClickedSfx;  // Tuş sesi
+        [SerializeField] private AudioClip accessDeniedSfx;  // Hatalı giriş sesi
+        [SerializeField] private AudioClip accessGrantedSfx; // Doğru giriş sesi
 
-        private string currentInput;
-        private bool displayingResult = false;
-        private bool accessWasGranted = false;
+        [Header("Game Over Ayarları")]
+        [SerializeField] private TMP_Text gameOverText;      // "Başaramadın" yazısı
+        [SerializeField] private float gameOverDelay = 2f;   // Sahne değişmeden önce bekleme süresi
+        [SerializeField] private string gameOverSceneName = "GameOverScene"; // Yüklenecek sahne adı
 
+        // -------------------- REFERANSLAR --------------------
+        [Header("Component Referansları")]
+        [SerializeField] private Renderer panelMesh;         // Keypad ekranının materyali
+        [SerializeField] private TMP_Text keypadDisplayText;// Şifre gösterim texti
+        [SerializeField] private AudioSource audioSource;   // Ses kaynağı
+
+        // -------------------- DEĞİŞKENLER --------------------
+        private string currentInput;           // Kullanıcının anlık girdisi
+        private bool displayingResult = false;// Sonuç gösteriliyor mu?
+        private bool accessWasGranted = false; // Şifre doğru girildi mi?
+
+        // Oyun başlangıcında ayarlamaları yap
         private void Awake()
         {
-            ClearInput();
-            panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
-            //
-            remainingAttempts = maxAttempts; // Ba�lang��ta t�m haklar aktif
-            UpdateAttemptsText(); // UI'� g�ncelle
-            //
+            ClearInput(); // Ekranı temizle
+            panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity); // Ekran rengini ayarla
+            
+            remainingAttempts = maxAttempts; // Deneme hakkını doldur
+            UpdateAttemptsText();            // UI'ı güncelle
         }
 
-
-        //Gets value from pressedbutton
+        // Tuşlara basıldığında çalışır
         public void AddInput(string input)
         {
-            audioSource.PlayOneShot(buttonClickedSfx);
+            audioSource.PlayOneShot(buttonClickedSfx); // Tuş sesi çal
+            
+            // Eğer animasyon oynuyorsa veya şifre zaten doğruysa işlem yapma
             if (displayingResult || accessWasGranted) return;
+
             switch (input)
             {
-                case "enter":
-                    CheckCombo();
+                case "enter": // Enter tuşuna basıldığında
+                    CheckCombo(); // Şifreyi kontrol et
                     break;
-                default:
-                    if (currentInput != null && currentInput.Length == 9) // 9 max passcode size 
-                    {
-                        return;
-                    }
-                    currentInput += input;
-                    keypadDisplayText.text = currentInput;
+                default: // Sayı tuşlarına basıldığında
+                    if (currentInput.Length == 9) return; // Max 9 haneli şifre
+                    currentInput += input; // Girilen sayıyı ekle
+                    keypadDisplayText.text = currentInput; // Ekranda göster
                     break;
             }
-
         }
+
+        // Şifre kontrolünü yapan metod
         public void CheckCombo()
         {
-            if (int.TryParse(currentInput, out var currentKombo))
+            if (int.TryParse(currentInput, out var currentKombo)) // Girilen sayıyı integer'a çevir
             {
-                bool granted = currentKombo == keypadCombo;
-                if (!displayingResult)
-                {
-                    StartCoroutine(DisplayResultRoutine(granted));
-                }
+                bool granted = currentKombo == keypadCombo; // Şifre doğru mu?
+                StartCoroutine(DisplayResultRoutine(granted)); // Sonucu göster
             }
             else
             {
-                Debug.LogWarning("Couldn't process input for some reason..");
+                Debug.LogWarning("Hatalı giriş!"); // Sayıya çevrilemezse hata
             }
-
         }
 
-        //mainly for animations 
+        // Sonuç gösterimini yöneten coroutine
         private IEnumerator DisplayResultRoutine(bool granted)
         {
-            displayingResult = true;
+            displayingResult = true; // Animasyon başladı
 
-            if (granted) AccessGranted();
-            else AccessDenied();
+            if (granted) AccessGranted(); // Doğruysa açılma işlemi
+            else AccessDenied();          // Yanlışsa hata işlemi
 
-            yield return new WaitForSeconds(displayResultTime);
-            displayingResult = false;
-            if (granted) yield break;
-            ClearInput();
-            panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
-
+            yield return new WaitForSeconds(displayResultTime); // Bekleme süresi
+            displayingResult = false; // Animasyon bitti
+            
+            if (!granted) // Yanlışsa ekranı temizle
+            {
+                ClearInput();
+                panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            }
         }
-        //
-        private IEnumerator LockKeypadRoutine()
+
+        // Şifre doğru girilirse çalışır
+        private void AccessGranted()
         {
-            keypadDisplayText.text = "K�L�TLEND�";
-            yield return new WaitForSeconds(2f);
-            // Burada keypad'i tamamen devre d��� b�rakabilirsiniz
-            this.enabled = false; // Keypad script'ini kapat
-
-            keypadDisplayText.text = "K�L�TLEND�";
-            yield return new WaitForSeconds(1f);
-
-            // "Ba�aramad�n" yaz�s�n� g�ster
-            if (gameOverText != null)
-                gameOverText.gameObject.SetActive(true);
-
-            // Sahneyi de�i�tirmeden �nce bekle
-            yield return new WaitForSeconds(gameOverDelay);
-            SceneManager.LoadScene(gameOverSceneName);
+            SceneManager.LoadScene("SampleScene"); // Ana sahneye dön
+            accessWasGranted = true;                // Giriş onaylandı
+            keypadDisplayText.text = accessGrantedText; // "Granted" yaz
+            panelMesh.material.SetVector("_EmissionColor", screenGrantedColor * screenIntensity); // Yeşil yanıp sönsün
+            audioSource.PlayOneShot(accessGrantedSfx); // Onay sesi çal
         }
-        //
 
+        // Şifre yanlış girilirse çalışır
         private void AccessDenied()
         {
-            keypadDisplayText.text = accessDeniedText;
-            onAccessDenied?.Invoke();
-            panelMesh.material.SetVector("_EmissionColor", screenDeniedColor * screenIntensity);
-            audioSource.PlayOneShot(accessDeniedSfx);
-            //
-            remainingAttempts--;
-            UpdateAttemptsText();
+            remainingAttempts--; // Deneme hakkını azalt
+            UpdateAttemptsText(); // UI'ı güncelle
 
-            if (remainingAttempts <= 0)
+            if (remainingAttempts <= 0) // Hak kalmadıysa
             {
-                StartCoroutine(LockKeypadRoutine());
-                return; // ClearInput() �a�r�lmas�n
+                StartCoroutine(LockKeypadRoutine()); // Keypad'i kilitle
+                return;
             }
 
-            ClearInput(); // Kalan hak varsa temizle
-
-            keypadDisplayText.text = accessDeniedText;
-            onAccessDenied?.Invoke();
-            panelMesh.material.SetVector("_EmissionColor", screenDeniedColor * screenIntensity);
-            audioSource.PlayOneShot(accessDeniedSfx);
-            //
+            // Hata efekti ayarları
+            keypadDisplayText.text = accessDeniedText; // "Denied" yaz
+            panelMesh.material.SetVector("_EmissionColor", screenDeniedColor * screenIntensity); // Kırmızı yanıp sönsün
+            audioSource.PlayOneShot(accessDeniedSfx); // Hata sesi çal
         }
-        //
+
+        // Keypad'i kilitleyen ve game over sahnesine geçiş yapan coroutine
+        private IEnumerator LockKeypadRoutine()
+        {
+            keypadDisplayText.text = "KİLİTLENDİ"; 
+            yield return new WaitForSeconds(2f);
+            
+            this.enabled = false; // Keypad'i devre dışı bırak
+
+            if (gameOverText != null)
+                gameOverText.gameObject.SetActive(true); // "Başaramadın" yazısını göster
+
+            yield return new WaitForSeconds(gameOverDelay);
+            SceneManager.LoadScene(gameOverSceneName); // Game Over sahnesine geç
+        }
+
+        // Kalan deneme hakkını UI'da göster
         private void UpdateAttemptsText()
         {
             if (attemptsText != null)
-                attemptsText.text = $"Kalan Hakk�n�z: {remainingAttempts}";
+                attemptsText.text = $"Kalan Hakkınız: {remainingAttempts}";
         }
-        //
 
+        // Ekranı ve girdiyi temizle
         private void ClearInput()
         {
             currentInput = "";
             keypadDisplayText.text = currentInput;
         }
-
-        private void AccessGranted()
-        {
-            SceneManager.LoadScene("SampleScene"); // Ana sahneye geri d�n
-            accessWasGranted = true;
-            keypadDisplayText.text = accessGrantedText;
-            onAccessGranted?.Invoke();
-            panelMesh.material.SetVector("_EmissionColor", screenGrantedColor * screenIntensity);
-            audioSource.PlayOneShot(accessGrantedSfx);
-        }
-
     }
 }
