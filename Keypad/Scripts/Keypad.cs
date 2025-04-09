@@ -17,13 +17,13 @@ namespace NavKeypad
         [Header("Kombinasyon Ayarları (Max 9 Haneli)")]
         [SerializeField] private int keypadCombo = 12345;     // Kapıyı açacak şifre
 
-        // -------------------- DENEME HAKKI AYARLARI --------------------
+        // -------------------- DENEME HAKKİ AYARLARİ --------------------
         [Header("Deneme Ayarları")]
         [SerializeField] private int maxAttempts = 3;        // Maksimum yanlış girme hakkı
         [SerializeField] private TMP_Text attemptsText;      // Kalan hakları gösteren text
         private int remainingAttempts;                       // Geriye kalan deneme hakkı
 
-        // -------------------- DİĞER AYARLAR --------------------
+        // -------------------- DİGER AYARLAR --------------------
         [Header("Görsel Ayarlar")]
         [SerializeField] private float displayResultTime = 1f; // Mesajların ekranda kalma süresi
         [Range(0, 5)]
@@ -50,7 +50,7 @@ namespace NavKeypad
         [SerializeField] private TMP_Text keypadDisplayText;// Şifre gösterim texti
         [SerializeField] private AudioSource audioSource;   // Ses kaynağı
 
-        // -------------------- DEĞİŞKENLER --------------------
+        // -------------------- DEGİSKENLER --------------------
         private string currentInput;           // Kullanıcının anlık girdisi
         private bool displayingResult = false;// Sonuç gösteriliyor mu?
         private bool accessWasGranted = false; // Şifre doğru girildi mi?
@@ -111,7 +111,7 @@ namespace NavKeypad
             yield return new WaitForSeconds(displayResultTime); // Bekleme süresi
             displayingResult = false; // Animasyon bitti
             
-            if (!granted) // Yanlışsa ekranı temizle
+            if (!granted) // Yanlış şifre girilirse ekran temizlenecek.
             {
                 ClearInput();
                 panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
@@ -123,7 +123,7 @@ namespace NavKeypad
         {
             SceneManager.LoadScene("SampleScene"); // Ana sahneye dön
             accessWasGranted = true;                // Giriş onaylandı
-            keypadDisplayText.text = accessGrantedText; // "Granted" yaz
+            keypadDisplayText.text = accessGrantedText; // Granted yaz
             panelMesh.material.SetVector("_EmissionColor", screenGrantedColor * screenIntensity); // Yeşil yanıp sönsün
             audioSource.PlayOneShot(accessGrantedSfx); // Onay sesi çal
         }
